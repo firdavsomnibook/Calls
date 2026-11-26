@@ -1,26 +1,26 @@
 <!doctype html><html lang="uz"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Firdavs Call</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#e8f3ed;color:#153d31;font:16px/1.5 Inter,system-ui,sans-serif}main{max-width:500px;margin:7vh auto;padding:24px}header{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:-.04em;font-size:26px}header i{font-style:normal;background:#194b3b;color:#aef5bd;padding:3px 14px;border-radius:13px}section,dialog{background:#fff;border:1px solid #bed6c7;border-radius:22px;padding:24px;margin-top:22px}dialog{margin:auto;width:min(90%,420px)}dialog::backdrop{background:#12382ab8}label,small{display:block}label{margin:14px 0 4px}input,button{font:inherit;padding:12px;border-radius:10px}input{width:100%;border:1px solid #96b4a3}button{border:0;background:#19543e;color:white;margin:12px 4px 0 0;cursor:pointer}button:disabled{opacity:.45}h1,h2{margin:0;font-size:22px}#end{background:#9d3844}output{display:block;margin-top:12px}small{color:#506b5d}audio{max-width:100%}
-</style><main><header><i>F</i> Firdavs Call</header><section><h1>Mening profilim</h1><form id="login"><label for="full">Ism va familiya</label><input required maxlength="64" id="full"><label for="nick">Username</label><input required pattern="@?[A-Za-z0-9_]{3,24}" placeholder="@Firdavs" id="nick"><small>Ism va username kiritilgach, avtomatik ulanasiz.</small></form><output id="status" aria-live="polite"></output></section>
-<section hidden id="book"><h2>Kontakt topish</h2><form id="lookup"><label for="query">To‘liq username</label><input id="query" required pattern="@?[A-Za-z0-9_]{3,24}" placeholder="@Firdavs"><button>Qidirish</button></form><output id="result"></output><small id="digits"></small><button hidden id="dial">☎ Qo‘ng‘iroq qilish</button></section>
-<dialog id="panel"><h2 id="who"></h2><p id="state"></p><button id="accept">Qabul qilish</button><button id="mute">Mikrofonni o‘chirish</button><button id="route">Dinamik / Bluetooth</button><button id="end">Tugatish</button><p id="hint"></p><audio id="audio" autoplay playsinline></audio></dialog></main>
+dialog{background:#123e32;color:white;text-align:center}dialog small{color:inherit;font-size:11px}.controls{display:flex;justify-content:center;gap:6px;flex-wrap:wrap}.controls button{width:64px;margin:4px 0;background:transparent;padding:0}.controls span{display:grid;place-items:center;margin:0 auto 5px;width:48px;height:48px;border-radius:50%;background:#386754;font-size:23px}.controls #end{background:transparent}#end span{background:#b93f51}#accept span{background:#279862}#mute[aria-pressed=true] span{background:#b76636}.meters{display:grid;grid-template-columns:65px 1fr;align-items:center;text-align:left;gap:8px;margin:20px 0}canvas{width:100%;height:32px;background:#0c3128;border-radius:8px}.person{display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left}.person small{color:#d0e4da}header i{font-style:normal}#hint{font-size:12px}</style><main><header><i>F</i> Firdavs Call</header><section><h1>Mening profilim</h1><form id="login"><label for="full">Ism va familiya</label><input required maxlength="64" id="full"><label for="nick">Nickname</label><input required pattern="@?[A-Za-z0-9_]{3,24}" placeholder="@nickname" id="nick"><small>Ism va username kiritilgach, avtomatik ulanasiz.</small></form><output id="status" aria-live="polite"></output></section>
+<section hidden id="book"><h2>Kontakt topish</h2><label for="query">Nickname</label><input id="query" placeholder="Kamida 2 harf" autocomplete="off"><output id="result" aria-live="polite"></output></section>
+<dialog id="panel"><h2 id="who"></h2><p id="state"></p><div class="meters"><small>Siz</small><canvas id="local" width="300" height="48"></canvas><small>Suhbatdosh</small><canvas id="remote" width="300" height="48"></canvas></div><div class="controls"><button id="accept"><span aria-hidden="true">☎</span><small>Qabul qilish</small></button><button id="mute"><span aria-hidden="true">🎙</span><small>Mikrofon</small></button><button id="route"><span aria-hidden="true">◖))</span><small>Dinamik</small></button><button id="bt"><span aria-hidden="true">ᛒ</span><small>Bluetooth</small></button><button id="end"><span aria-hidden="true">☎</span><small>Tugatish</small></button></div><p id="hint"></p><audio id="audio" autoplay playsinline></audio></dialog></main>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script><script>
 'use strict';
 const el=id=>document.getElementById(id), prefix='firdavs-uz-call-v3-', handle=v=>v.trim().replace(/^@/,'').toLowerCase();
 let profile, peer, searchLink, target, session;
 try{profile=JSON.parse(localStorage.getItem('firdavs-call-profile'));if(profile){el('full').value=profile.name;el('nick').value=profile.nick}}catch{}
 function show(id,msg){el(id).textContent=msg}
-function finish(s,msg){if(!s||s!==session)return;session=null;clearTimeout(s.timer);s.stream?.getTracks().forEach(t=>t.stop());s.media?.close();s.link.close();el('audio').srcObject=null;el('panel').close();show('status',msg)}
+function finish(s,msg){if(!s||s!==session)return;session=null;s.context?.close().catch(()=>{});clearTimeout(s.timer);s.stream?.getTracks().forEach(t=>t.stop());s.media?.close();s.link.close();el('audio').srcObject=null;el('audio').controls=false;el('panel').close();show('status',msg)}
 function openSession(link,incoming){if(session){link.send('busy');setTimeout(()=>link.close(),300);return}
-const s=session={link,incoming};el('accept').hidden=!incoming;el('mute').hidden=true;el('route').hidden=true;show('who','@'+link.peer.slice(prefix.length));show('state',incoming?'Kiruvchi qo‘ng‘iroq':'Chaqirilmoqda…');show('hint','');el('panel').showModal();
+const s=session={link,incoming};el('accept').hidden=!incoming;el('mute').hidden=true;el('bt').hidden=el('route').hidden=true;show('who','@'+link.peer.slice(prefix.length));show('state',incoming?'Kiruvchi qo‘ng‘iroq':'Chaqirilmoqda…');show('hint','');el('panel').showModal();
 s.timer=setTimeout(()=>finish(s,'Javob yoki audio ulanishi bo‘lmadi.'),60000);
 link.on('close',()=>finish(s,'Qo‘ng‘iroq tugadi'));link.on('error',()=>finish(s,'Aloqa uzildi'));
 link.on('data',async m=>{if(session!==s)return;if(m==='busy')return finish(s,'Suhbatdosh band');if(m==='accept'&&!incoming&&!s.started){s.started=true;if(await microphone(s)){const media=peer.call(link.peer,s.stream,{metadata:{key:link.connectionId}});if(media)bindMedia(s,media);else finish(s,'Audio ulanmadi')}}});return s}
-async function microphone(s){try{if(!navigator.mediaDevices?.getUserMedia)throw Error();const stream=await navigator.mediaDevices.getUserMedia({audio:true});if(session!==s){stream.getTracks().forEach(t=>t.stop());return false}s.stream=stream;show('state','Ovoz ulanmoqda…');return true}catch{finish(s,'Mikrofon ochilmadi. Brauzerda mikrofon ruxsatini va HTTPS manzilini tekshiring.');return false}}
-function bindMedia(s,media){s.media=media;media.on('stream',stream=>{if(s!==session)return;clearTimeout(s.timer);const audio=el('audio');audio.srcObject=stream;audio.play().catch(()=>audio.controls=true);show('state','Suhbat davom etmoqda');el('mute').hidden=el('route').hidden=false;show('mute','Mikrofonni o‘chirish')});media.on('close',()=>finish(s,'Suhbat tugadi'));media.on('error',()=>finish(s,'Audio aloqa uzildi'))}
+async function microphone(s){try{if(!navigator.mediaDevices?.getUserMedia)throw Error();const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,latency:{ideal:0.01},channelCount:1}});if(session!==s){stream.getTracks().forEach(t=>t.stop());return false}s.stream=stream;for(const track of stream.getAudioTracks())if('contentHint' in track)track.contentHint='speech';visualize(s,s.stream,'local');show('state','Ovoz ulanmoqda…');return true}catch{finish(s,'Mikrofon ochilmadi. Brauzerda mikrofon ruxsatini va HTTPS manzilini tekshiring.');return false}}
+function bindMedia(s,media){s.media=media;media.on('stream',stream=>{if(s!==session)return;clearTimeout(s.timer);const audio=el('audio');audio.srcObject=stream;audio.play().catch(()=>audio.controls=true);show('state','Suhbat davom etmoqda');el('mute').hidden=el('bt').hidden=el('route').hidden=false;el('mute').setAttribute('aria-pressed','false');el('mute').firstElementChild.textContent='🎙';el('mute').lastElementChild.textContent='Mikrofon';visualize(s,stream,'remote')});media.on('close',()=>finish(s,'Suhbat tugadi'));media.on('error',()=>finish(s,'Audio aloqa uzildi'))}
 function connectProfile(){if(!window.Peer)return show('status','Aloqa moduli yuklanmadi. Internetni tekshirib, sahifani yangilang.');const nick=handle(el('nick').value),name=el('full').value.trim();if(!name)return;const old=peer;peer=null;old?.destroy();const p=peer=new Peer(prefix+nick,{secure:true});show('status','Ulanmoqda…');
-p.on('open',()=>{if(p!==peer)return;profile={name,nick,code:profile?.nick===nick?profile.code:String(100000+crypto.getRandomValues(new Uint32Array(1))[0]%900000)};try{localStorage.setItem('firdavs-call-profile',JSON.stringify(profile))}catch{}el('login').hidden=true;el('book').hidden=false;show('status',name+' · @'+nick+' · '+profile.code+' · Onlayn')});
-p.on('error',err=>{if(p!==peer)return;if(err.type==='peer-unavailable'){show('result','Foydalanuvchi hozir topilmadi.');if(session&&!session.stream)finish(session,'Suhbatdosh onlayn emas')}else{show('status',err.type==='unavailable-id'?'Bu username hozir band. Boshqasini kiriting.':'Aloqa xatosi. Qayta ulanib ko‘ring.');}});
+p.on('open',()=>{if(p!==peer)return;profile={name,nick,code:profile?.nick===nick?profile.code:String(100000+crypto.getRandomValues(new Uint32Array(1))[0]%900000)};try{localStorage.setItem('firdavs-call-profile',JSON.stringify(profile))}catch{}el('login').hidden=true;el('book').hidden=false;startDirectory(p);show('status',name+' · @'+nick+' · '+profile.code+' · Onlayn')});
+p.on('error',err=>{if(p!==peer)return;if(err.type==='peer-unavailable'){show('result','Foydalanuvchi hozir topilmadi.');if(session&&err.message?.endsWith(session.link.peer)&&!session.stream)finish(session,'Suhbatdosh onlayn emas')}else{show('status',err.type==='unavailable-id'?'Bu username hozir band. Boshqasini kiriting.':'Aloqa xatosi. Qayta ulanib ko‘ring.');}});
 p.on('disconnected',()=>{if(p!==peer)return;finish(session,'Aloqa uzildi');show('status','Aloqa uzildi. Qayta ulaning.');el('login').hidden=false;;el('book').hidden=true;scheduleJoin(3500)});
 p.on('connection',link=>{if(!link.peer.startsWith(prefix))return link.close();if(link.label==='profile'){link.on('open',()=>link.send(profile));setTimeout(()=>link.close(),6000)}else if(link.label==='ring')link.on('open',()=>openSession(link,true));else link.close()});
 p.on('call',media=>{const s=session;if(!s?.incoming||!s.stream||s.media||media.peer!==s.link.peer||media.metadata?.key!==s.link.connectionId)return media.close();bindMedia(s,media);media.answer(s.stream)})};
@@ -41,10 +41,99 @@ el('login').addEventListener('input',()=>{
 el('login').onsubmit=e=>{e.preventDefault();scheduleJoin(0)};
 window.addEventListener('online',()=>scheduleJoin(0));
 if(profile)scheduleJoin(0);
-el('lookup').onsubmit=e=>{e.preventDefault();searchLink?.close();target=null;el('dial').hidden=true;show('digits','');const nick=handle(el('query').value);if(nick===profile.nick)return show('result','Bu sizning profilingiz.');show('result','Qidirilmoqda…');const link=searchLink=peer.connect(prefix+nick,{label:'profile',reliable:true});const timer=setTimeout(()=>{if(searchLink===link&&!target)show('result','Suhbatdosh topilmadi yoki aloqa cheklangan.');link.close()},10000);link.on('data',p=>{if(link!==searchLink||p?.nick!==nick||!/^\d{6}$/.test(p.code))return;clearTimeout(timer);target=link.peer;show('result',String(p.name)+' · @'+nick);show('digits',p.code);el('dial').hidden=false;link.close()})};
-el('dial').onclick=()=>{if(target&&!session)openSession(peer.connect(target,{label:'ring',reliable:true}),false)};
+const hubId='firdavscall-directory-v4';
+let directoryReady=false, contacts=[];
+function renderContacts(){
+  const query=handle(el('query').value);
+  const box=el('result');box.replaceChildren();
+  if(query.length<2)return;
+  if(!directoryReady){box.textContent='Kontaktlar yuklanmoqda…';return}
+  for(const person of contacts){
+    if(person.nick===profile.nick||!person.nick.startsWith(query))continue;
+    const row=document.createElement('button'), info=document.createElement('span'), detail=document.createElement('small');
+    row.className='person';info.textContent=person.name;detail.textContent='@'+person.nick+' · '+person.code;
+    info.append(detail);row.append(info,'☎');row.onclick=()=>{if(!session)openSession(peer.connect(prefix+person.nick,{label:'ring',reliable:true}),false)};
+    box.append(row);
+  }
+  if(!box.children.length)box.textContent='Onlayn kontakt topilmadi';
+}
+el('query').oninput=renderContacts;
+let stopDirectory=()=>{};
+function startDirectory(owner){
+  stopDirectory();
+  let candidate, link, closed=false, retry, watchdog;
+  function reset(){directoryReady=false;contacts=[];renderContacts()}
+  function stop(){closed=true;clearTimeout(retry);clearTimeout(watchdog);link?.close();candidate?.destroy();reset()}
+  stopDirectory=stop;
+  owner.once('disconnected',stop);
+  function attempt(){
+    if(closed||peer!==owner)return;
+    const host=candidate=new Peer(hubId,{secure:true});
+    const members=new Map();
+    function publish(){
+      const rows=Array.from(members.values(),entry=>entry.person);
+      for(const {connection} of members.values())if(connection.open)connection.send(rows);
+    }
+    host.on('connection',connection=>{
+      connection.on('data',person=>{
+        if(!person||typeof person.nick!=='string'||connection.peer!==prefix+person.nick||typeof person.name!=='string'||!/^\d{6}$/.test(person.code))return;
+        members.set(connection.peer,{person:{nick:person.nick,name:person.name.slice(0,64),code:person.code},connection});publish();
+      });
+      connection.on('close',()=>{if(members.get(connection.peer)?.connection===connection){members.delete(connection.peer);publish()}});
+    });
+    function join(){
+      if(closed||candidate!==host)return;
+      const conn=link=owner.connect(hubId,{label:'directory',reliable:true});
+      function lost(){
+        if(closed||link!==conn)return;
+        link=null;clearTimeout(watchdog);conn.close();candidate=null;host.destroy();reset();retry=setTimeout(attempt,1200+Math.random()*900);
+      }
+      watchdog=setTimeout(lost,12000);
+      conn.on('open',()=>conn.send(profile));conn.on('data',rows=>{
+        if(link!==conn||!Array.isArray(rows))return;
+        clearTimeout(watchdog);directoryReady=true;contacts=rows.filter(p=>typeof p?.nick==='string');renderContacts();
+      });
+      conn.on('close',lost);conn.on('error',lost);
+    }
+    host.on('open',join);host.on('error',err=>{if(err.type==='unavailable-id')join();else if(!closed&&candidate===host&&!link){host.destroy();retry=setTimeout(attempt,2500)}});
+  }
+  attempt();
+}
 el('accept').onclick=async()=>{const s=session;el('accept').hidden=true;if(await microphone(s))s.link.send('accept')};
 el('end').onclick=()=>finish(session,'Qo‘ng‘iroq tugadi');el('panel').oncancel=e=>{e.preventDefault();el('end').click()};
-el('mute').onclick=()=>{const track=session?.stream?.getAudioTracks()[0];if(track){track.enabled=!track.enabled;show('mute',track.enabled?'Mikrofonni o‘chirish':'Mikrofonni yoqish')}};
-el('route').onclick=async()=>{try{const device=await navigator.mediaDevices.selectAudioOutput();await el('audio').setSinkId(device.deviceId);show('hint',device.label||'Ovoz chiqishi tanlandi')}catch{show('hint','Telefonning ovoz menyusidan dinamik yoki ulangan Bluetooth quloqchinni tanlang.')}};
+function visualize(s,stream,id){
+  try{
+    s.context??=new AudioContext();const ctx=s.context;
+    ctx.resume().catch(()=>{});const source=ctx.createMediaStreamSource(stream), analyser=ctx.createAnalyser();
+    analyser.fftSize=256;source.connect(analyser);
+    const bins=new Uint8Array(analyser.frequencyBinCount),canvas=el(id),paint=canvas.getContext('2d');
+    function frame(){
+      paint.clearRect(0,0,canvas.width,canvas.height);if(session!==s)return;
+      analyser.getByteFrequencyData(bins);
+      paint.fillStyle=id==='local'?'#87efbc':'#78cfff';
+      for(let i=0;i<40;i++){const h=Math.max(2,bins[i*2]*0.17);paint.fillRect(i*7.5,(48-h)/2,5,h)}
+      requestAnimationFrame(frame);
+    }frame();
+  }catch{}
+}
+el('mute').onclick=()=>{
+  const tracks=session?.stream?.getAudioTracks();if(!tracks?.length)return;
+  const enabled=!tracks[0].enabled;
+  for(const track of tracks)track.enabled=enabled;
+  el('mute').setAttribute('aria-pressed',String(!enabled));
+  el('mute').firstElementChild.textContent=enabled?'🎙':'🔇';
+  el('mute').lastElementChild.textContent=enabled?'Mikrofon':'O‘chiq';
+};
+async function outputDevice(bluetooth){
+  const type=bluetooth?'Bluetooth':'dinamik',audio=el('audio');
+  try{
+    const devices=await navigator.mediaDevices.enumerateDevices();
+    const pattern=bluetooth?/bluetooth|airpods|buds|wireless/i:/speaker|loudspeaker|dinamik|динамик/i;
+    let device=devices.find(d=>d.kind==='audiooutput'&&pattern.test(d.label));
+    if(!device)device=await navigator.mediaDevices.selectAudioOutput();
+    await audio.setSinkId(device.deviceId);
+    show('hint',device.label||'Ovoz chiqishi tanlandi');
+  }catch{show('hint','Qurilmaning ovoz menyusidan '+type+'ni tanlang.')}
+}
+el('route').onclick=()=>outputDevice(false);el('bt').onclick=()=>outputDevice(true);
 </script></html>
